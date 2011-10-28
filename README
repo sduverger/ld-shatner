@@ -1,0 +1,9 @@
+$ make clean all
+$ cp /lib/ld-linux.so.2 .
+$ cp /bin/ls .
+$ ./ld-shatner ld-linux.so.2 obj.elf
+$ sudo cp ld-hook.so /lib/
+$ ./interpatch ls 
+$ ./ls 
+ld-hook <---------------------- output of obj.elf
+[...]
