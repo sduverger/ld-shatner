@@ -1,14 +1,18 @@
-Purpose:
---------
+                              ld-shatner
 
-Inject code into ld-linux.so to be executed before targeted binary entry point.
 
-Screenshot:
------------
+Purpose
+-------
+
+Inject code at runtime, just between the ELF loader and target
+binary. It is an alternative to LD_PRELOAD feature, just a little bit
+more intrusive :)
+
+Screenshot
+----------
 
 $ make clean all
-$ cp /lib/ld-linux.so.2 .
-$ cp /bin/ls .
+$ cp /lib/ld-linux.so.2 /bin/ls .
 $ ./ld-shatner ld-linux.so.2 obj.elf
 $ sudo cp ld-hook.so /lib/
 $ ./interpatch ls
@@ -19,3 +23,61 @@ ld-hook <---------------------- output of obj.elf
 The newly generated 'ls' uses our freshly generated 'ld-hook.so' acting
 as its dynamic interpreter. The code from 'obj.elf' is executed before
 'ls' entry point.
+
+How to
+------
+
+When an ELF binary is execve(), the kernel extracts from the file the
+interpreter to be executed, usually, it is /lib/ld-linux.so.2.
+
+The kernel creates a new process and prepares the environment
+(arguments and auxiliary data). The target ELF entry point is set in
+auxiliary vector of type "ENTRY".
+
+Then the kernel opens the requested interpreter, maps the memory
+regions and start its execution at ld's ELF entry point. Then the
+loader analyzes the target ELF file, do its loader work and set EIP to
+target ELF entry point (extracted from auxv). At this point, main()'s
+program is eventually executed.
+
+Our goal was to permit the execution of code for abitrary dynamically
+linked binary without patching each of them. So our interest moved on
+the loader, the common point between most executables. Thus, we
+decided to patch a normal ld in order to inject code. Welcome
+ld-shatner!
+
+Its task is to modify the ld-linux.so file accordingly:
+
+  1. After ELF header, we shift "ELF program header" a few pages away
+
+  2. In this new section, we inject a "loader routine" (hooked.s) and
+     the embedded code to be executed at runtime
+
+  3. After having been saved in our section, ld's ELF entry point is
+     overwritten to jump directly on our routine. This routine
+     extracts from auxiliary vectors the target ELF entry point and
+     overwrites it with a pointer to our embedded code (the payload).
+
+  4. Original ld's entry point is called and ld works as usual
+
+  5. Eventually, it calls entry point set in auxiliary vector (which
+     was replaced by a pointer to our payload)
+
+  6. Injected code runs
+
+  7. It returns to our routine which finally jumps on original target
+     entry point
+
+
+Why this name?
+--------------
+
+This tool provides a way to hook ELF binary, it would have been too
+easy to call this project ld-"hooker". Instead, we dedicate this tool
+to one of the greatest TV show of all time, played by William Shatner,
+Hooker. Sorry :)
+
+Authors
+-------
+
+Stéphane Duverger, Nicolas Bareil (EADS France)
