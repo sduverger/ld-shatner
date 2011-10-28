@@ -1,9 +1,21 @@
+Purpose:
+--------
+
+Inject code into ld-linux.so to be executed before targeted binary entry point.
+
+Screenshot:
+-----------
+
 $ make clean all
 $ cp /lib/ld-linux.so.2 .
 $ cp /bin/ls .
 $ ./ld-shatner ld-linux.so.2 obj.elf
 $ sudo cp ld-hook.so /lib/
-$ ./interpatch ls 
+$ ./interpatch ls
 $ ./ls 
 ld-hook <---------------------- output of obj.elf
 [...]
+
+The newly generated 'ls' uses our freshly generated 'ld-hook.so' acting
+as its dynamic interpreter. The code from 'obj.elf' is executed before
+'ls' entry point.
